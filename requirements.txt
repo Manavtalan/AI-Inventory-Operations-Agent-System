@@ -1,0 +1,34 @@
+# Core framework
+fastapi
+uvicorn[standard]
+
+# Database
+sqlalchemy[asyncio]
+asyncpg
+alembic
+
+# Task queue
+celery[redis]
+redis
+
+# Data validation & settings
+pydantic[email]
+pydantic-settings
+
+# Logging
+structlog
+
+# Utilities
+python-dotenv
+httpx
+pyyaml
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
+httpx
+
+# Code quality
+black
+ruff

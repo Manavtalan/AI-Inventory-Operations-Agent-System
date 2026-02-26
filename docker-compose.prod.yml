@@ -1,0 +1,129 @@
+version: "3.9"
+
+# =============================================================================
+# AI Inventory & Operations Intelligence System — Production Overrides
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Key differences from development:
+#   - No flower service (monitoring via external tooling)
+#   - No volume mounts for live code reload
+#   - No exposed ports for postgres/redis (internal network only)
+#   - Nginx reverse proxy terminates traffic on 80/443
+#   - Restart policy: always (not unless-stopped)
+#   - Resource limits to prevent runaway containers
+#   - Production log level
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — No exposed port in production (internal network only)
+  # ---------------------------------------------------------------------------
+  postgres:
+    restart: always
+    ports: []  # Remove port exposure — access via internal network only
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Redis — No exposed port in production
+  # ---------------------------------------------------------------------------
+  redis:
+    restart: always
+    ports: []  # Remove port exposure — access via internal network only
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+
+  # ---------------------------------------------------------------------------
+  # App — Production mode: no reload, no code volume mount
+  # ---------------------------------------------------------------------------
+  app:
+    restart: always
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: WARNING
+    ports: []  # Nginx handles external traffic — app is internal only
+    volumes: []  # No code volume mount in production
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Worker — Production mode: no code volume mount
+  # ---------------------------------------------------------------------------
+  worker:
+    restart: always
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: WARNING
+    volumes: []
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Beat — Production mode: no code volume mount
+  # ---------------------------------------------------------------------------
+  beat:
+    restart: always
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: WARNING
+    volumes: []
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+
+  # ---------------------------------------------------------------------------
+  # Nginx — Reverse proxy (production only)
+  # Terminates HTTP on port 80; add TLS termination via Let's Encrypt or upstream
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: inventory_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro  # Mount TLS certs here
+    networks:
+      - inventory-net
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
