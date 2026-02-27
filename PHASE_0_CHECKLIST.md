@@ -8,27 +8,27 @@
 - [x] Create claude.md planning doc
 - [x] Create phase checklist
 
-## Step 0.2 — Docker Environment
-- [ ] Create docker-compose.yml
-- [ ] Create docker-compose.prod.yml
-- [ ] Create Dockerfile for app
-- [ ] Configure postgres service with health check
-- [ ] Configure redis service with health check
-- [ ] Configure app service with dependency on postgres/redis
-- [ ] Configure worker service
-- [ ] Configure beat service
-- [ ] Test: docker-compose up brings all services up cleanly
-- [ ] Test: Health checks pass for all services
+## Step 0.2 — Docker Environment ✓
+- [x] Create docker-compose.yml
+- [x] Create docker-compose.prod.yml
+- [x] Create Dockerfile for app
+- [x] Configure postgres service with health check
+- [x] Configure redis service with health check
+- [x] Configure app service with dependency on postgres/redis
+- [x] Configure worker service
+- [x] Configure beat service
+- [x] Test: docker-compose up brings all services up cleanly
+- [x] Test: Health checks pass for all services
 
-## Step 0.3 — Core Application Setup
-- [ ] Create app/ directory structure
-- [ ] Set up FastAPI application factory (create_app())
-- [ ] Configure structlog for structured JSON logging
-- [ ] Add request ID middleware
-- [ ] Add global exception handler
-- [ ] Create health check endpoint GET /health
-- [ ] Add startup validation (verify env vars, services reachable)
-- [ ] Test: /health returns 200 with service status
+## Step 0.3 — Core Application Setup ✓
+- [x] Create app/ directory structure (api, integrations, services, workers, models, schemas)
+- [x] Set up FastAPI application factory (create_app())
+- [x] Configure structlog for structured JSON logging (app/core/logging.py)
+- [x] Add request ID middleware (app/core/middleware.py — X-Request-ID tracing)
+- [x] Add global exception handler (app/core/exceptions.py)
+- [x] Create health check endpoint GET /health (returns db + redis status)
+- [x] Add startup validation (env var check + Postgres/Redis connectivity on lifespan startup)
+- [x] Test: /health returns 200 with service status (503 when degraded)
 
 ## Step 0.4 — Settings & Secrets Management
 - [ ] Create app/core/settings.py with Pydantic BaseSettings

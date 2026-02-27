@@ -233,20 +233,13 @@ OPENAI_API_KEY=
 
 ## Current Task
 
-**Phase 0, Step 0.2 — Docker Environment Setup**
+**Phase 0, Step 0.4 — Settings & Secrets Management**
 
-Create production-ready docker-compose.yml with:
-- app (FastAPI)
-- worker (Celery worker)
-- beat (Celery beat scheduler)
-- postgres (PostgreSQL 15)
-- redis (Redis 7)
-
-All services must have:
-- Health checks defined
-- Proper dependency ordering (app waits for postgres/redis to be healthy)
-- Volume mounts for persistence
-- Environment variable injection
+Replace raw `os.getenv()` calls with a Pydantic `BaseSettings` class:
+- Create `app/core/settings.py` with typed, validated settings
+- Update `app/main.py` to use settings object
+- Update `.env.example` with all variables documented
+- Startup validation should use Settings (missing required var = refused startup with clear error)
 
 ---
 
