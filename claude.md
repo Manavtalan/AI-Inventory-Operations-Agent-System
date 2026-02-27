@@ -78,14 +78,16 @@ inventory-ops-ai/
 
 ## Development Phases
 
-### Phase 0 — Foundation (3-4 days) ← WE ARE HERE
-- Repository structure
-- Docker environment (app, worker, beat, postgres, redis)
-- FastAPI skeleton with structured logging
-- Settings & secrets management
-- Database setup with base models
-- Celery configuration
-- CI/CD pipeline
+### Phase 0 — Foundation (3-4 days) ← WE ARE HERE (~60% complete)
+- ✅ Repository structure
+- ✅ Docker environment (app, worker, beat, postgres, redis, flower)
+- ✅ FastAPI application factory with structured logging
+- ✅ Request ID middleware and exception handling
+- ✅ Startup validation with postgres/redis connectivity checks
+- 🔨 Settings & secrets management (IN PROGRESS - Step 0.4)
+- ⏳ Database setup with base models (Step 0.5)
+- ⏳ Celery configuration (Step 0.6)
+- ⏳ CI/CD pipeline (Step 0.8)
 
 ### Phase 1 — Shopify Integration (4-5 days)
 - Webhook receiver with HMAC validation
@@ -231,15 +233,36 @@ OPENAI_API_KEY=
 
 ---
 
-## Current Task
+## Current Progress
 
-**Phase 0, Step 0.4 — Settings & Secrets Management**
+**Phase 0 Progress: ~60% Complete (Steps 0.1-0.3 done)**
 
-Replace raw `os.getenv()` calls with a Pydantic `BaseSettings` class:
-- Create `app/core/settings.py` with typed, validated settings
-- Update `app/main.py` to use settings object
-- Update `.env.example` with all variables documented
-- Startup validation should use Settings (missing required var = refused startup with clear error)
+Completed:
+- ✅ Step 0.1: Repository structure, git, documentation
+- ✅ Step 0.2: Docker environment with 6 services (all healthy)
+- ✅ Step 0.3: Core application setup (logging, middleware, exceptions, startup validation)
+
+Current Task:
+- 🔨 Step 0.4: Settings & Secrets Management
+
+Next Steps:
+- Step 0.5: Database setup (SQLAlchemy, Alembic, base models)
+- Step 0.6: Celery configuration (queues, routing, retry policies)
+- Step 0.7: Brand configuration system (YAML)
+- Step 0.8: CI/CD pipeline (GitHub Actions)
+
+---
+
+## Step 0.4 — Settings & Secrets Management (CURRENT)
+
+Replace raw `os.getenv()` calls with centralized Pydantic `BaseSettings`:
+- Create `app/core/config.py` with Settings class using BaseSettings v2
+- Validate ALL environment variables on import
+- Construct database_url and redis_url as @property methods
+- Export singleton: `settings = Settings()`
+- Update all files using os.getenv() to use settings instance
+- Files to update: app/core/celery_app.py, app/main.py
+- Startup validation uses Settings (missing var = clear error, refused startup)
 
 ---
 
