@@ -1,4 +1,3 @@
-
 # =============================================================================
 # AI Inventory & Operations Intelligence System — Development Environment
 # Services: postgres, redis, app, worker, beat, flower
