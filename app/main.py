@@ -1,6 +1,10 @@
 """
 AI Inventory & Operations Intelligence System — FastAPI Application Entry Point
 
+Phase 0, Step 0.4 — Settings & Secrets Management:
+  - All configuration now sourced from app.core.config.settings (Pydantic BaseSettings)
+  - No raw os.getenv() calls — missing required vars crash at import with a clear error
+
 Phase 0, Step 0.3 — Core Application Setup:
   - Application factory pattern (create_app)
   - Structured JSON logging via structlog
@@ -10,7 +14,6 @@ Phase 0, Step 0.3 — Core Application Setup:
   - Enhanced /health endpoint with service status
 """
 
-import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -20,49 +23,38 @@ import structlog
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 
+from app.core.config import settings
 from app.core.exceptions import AppError, app_error_handler, global_exception_handler
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIDMiddleware
 
 # Configure logging immediately — must happen before any get_logger() call
 # so that cache_logger_on_first_use captures the correct configuration.
-configure_logging(
-    log_level=os.getenv("LOG_LEVEL", "INFO"),
-    json_logs=os.getenv("APP_ENV", "development") != "development",
-)
+configure_logging(log_level=settings.log_level, json_logs=settings.json_logs)
 
 logger = structlog.get_logger(__name__)
 
-# ---------------------------------------------------------------------------
-# Startup validation
-# ---------------------------------------------------------------------------
 
-_REQUIRED_ENV_VARS = [
-    "POSTGRES_HOST",
-    "POSTGRES_PORT",
-    "POSTGRES_DB",
-    "POSTGRES_USER",
-    "POSTGRES_PASSWORD",
-    "REDIS_HOST",
-    "REDIS_PORT",
-]
+# ---------------------------------------------------------------------------
+# Service connectivity checks
+# ---------------------------------------------------------------------------
 
 
 async def _check_postgres() -> bool:
     """Attempt a lightweight Postgres connection. Returns True if reachable."""
     try:
         conn = await asyncpg.connect(
-            host=os.getenv("POSTGRES_HOST", "localhost"),
-            port=int(os.getenv("POSTGRES_PORT", "5432")),
-            database=os.getenv("POSTGRES_DB", "inventory_ops"),
-            user=os.getenv("POSTGRES_USER", "postgres"),
-            password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+            host=settings.postgres_host,
+            port=settings.postgres_port,
+            database=settings.postgres_db,
+            user=settings.postgres_user,
+            password=settings.postgres_password,
             timeout=5,
         )
         await conn.close()
         return True
     except Exception as exc:
-        logger.warning("startup_check", service="database", status="unavailable", error=str(exc))
+        logger.warning("service_check", service="database", status="unavailable", error=str(exc))
         return False
 
 
@@ -70,47 +62,46 @@ async def _check_redis() -> bool:
     """Attempt a Redis PING. Returns True if reachable."""
     try:
         client = aioredis.Redis(
-            host=os.getenv("REDIS_HOST", "localhost"),
-            port=int(os.getenv("REDIS_PORT", "6379")),
-            db=int(os.getenv("REDIS_DB", "0")),
+            host=settings.redis_host,
+            port=settings.redis_port,
+            db=settings.redis_db,
             socket_connect_timeout=5,
         )
         await client.ping()
         await client.aclose()
         return True
     except Exception as exc:
-        logger.warning("startup_check", service="redis", status="unavailable", error=str(exc))
+        logger.warning("service_check", service="redis", status="unavailable", error=str(exc))
         return False
 
 
+# ---------------------------------------------------------------------------
+# Startup validation
+# ---------------------------------------------------------------------------
+
+
 async def _validate_startup() -> None:
-    """Run startup checks and log results. Crash in production if critical services are down."""
-    app_env = os.getenv("APP_ENV", "development")
+    """Check service connectivity on startup and log results.
 
-    # 1. Check required env vars
-    missing = [v for v in _REQUIRED_ENV_VARS if not os.getenv(v)]
-    if missing:
-        logger.warning("startup_check", check="env_vars", missing=missing)
-        if app_env == "production":
-            raise RuntimeError(f"Missing required environment variables: {missing}")
+    Pydantic already enforces required env vars at import time (missing vars
+    raise ValidationError before we get here). This function only checks
+    that Postgres and Redis are actually reachable.
 
-    # 2. Check Postgres
+    In production, unreachable services abort startup. In development,
+    they log a warning and continue so local work can proceed without Docker.
+    """
     db_ok = await _check_postgres()
-    logger.info("startup_check", service="database", status="ok" if db_ok else "unavailable")
-
-    # 3. Check Redis
     redis_ok = await _check_redis()
-    logger.info("startup_check", service="redis", status="ok" if redis_ok else "unavailable")
-
-    if app_env == "production" and not (db_ok and redis_ok):
-        raise RuntimeError("Critical services unreachable — refusing to start in production.")
 
     logger.info(
         "startup_complete",
-        app_env=app_env,
+        app_env=settings.app_env,
         database="ok" if db_ok else "degraded",
         redis="ok" if redis_ok else "degraded",
     )
+
+    if settings.is_production and not (db_ok and redis_ok):
+        raise RuntimeError("Critical services unreachable — refusing to start in production.")
 
 
 # ---------------------------------------------------------------------------
@@ -128,26 +119,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     """Application factory — build and configure the FastAPI instance."""
-    app_env = os.getenv("APP_ENV", "development")
-
     app = FastAPI(
         title="AI Inventory & Operations Intelligence System",
         description="Automated inventory reconciliation and reporting for D2C brands.",
         version="0.1.0",
         lifespan=lifespan,
-        # Hide /docs and /redoc in production
-        docs_url=None if app_env == "production" else "/docs",
-        redoc_url=None if app_env == "production" else "/redoc",
+        # Hide interactive docs in production
+        docs_url=None if settings.is_production else "/docs",
+        redoc_url=None if settings.is_production else "/redoc",
     )
 
-    # Middleware (outermost = last registered)
+    # Middleware
     app.add_middleware(RequestIDMiddleware)
 
     # Exception handlers
     app.add_exception_handler(AppError, app_error_handler)
     app.add_exception_handler(Exception, global_exception_handler)
 
-    # Routers (additional routers added here as phases progress)
+    # Routers (additional routers registered here as phases progress)
     _register_routes(app)
 
     return app

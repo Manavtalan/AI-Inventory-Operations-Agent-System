@@ -30,23 +30,25 @@
 - [x] Add startup validation (env var check + Postgres/Redis connectivity on lifespan startup)
 - [x] Test: /health returns 200 with service status (503 when degraded)
 
-## Step 0.4 — Settings & Secrets Management
-- [ ] Create app/core/settings.py with Pydantic BaseSettings
-- [ ] Create .env.example with all variables documented
-- [ ] Add Settings validation on startup
-- [ ] Test: Missing required var = refused startup with clear error
+## Step 0.4 — Settings & Secrets Management ✓
+- [x] Create app/core/config.py with Pydantic BaseSettings v2 (Settings singleton)
+- [x] .env.example already complete with all variables documented
+- [x] Settings validation on startup — Pydantic raises ValidationError at import if required vars missing
+- [x] Updated app/main.py — all os.getenv() replaced with settings.*
+- [x] Updated app/core/celery_app.py — broker/backend/task config from settings
+- [x] Test: Missing required var = ValidationError at startup with clear per-field message
 
-## Step 0.5 — Database Setup
-- [ ] Install SQLAlchemy + asyncpg
-- [ ] Create app/core/database.py with async engine
-- [ ] Create app/models/base.py with Base model (id, created_at, updated_at, is_deleted)
-- [ ] Configure connection pooling (min 5, max 20)
-- [ ] Set query timeout to 30 seconds
-- [ ] Install Alembic
-- [ ] Initialize Alembic with async template
-- [ ] Create initial migration for base schema
-- [ ] Test: alembic upgrade head works
-- [ ] Test: alembic downgrade base works
+## Step 0.5 — Database Setup ✓
+- [x] SQLAlchemy + asyncpg already in requirements.txt
+- [x] Create app/core/database.py with async engine (pool_size=5, max_overflow=15, timeout=30s)
+- [x] Create app/models/base.py — DeclarativeBase + TimestampMixin (id UUID, created_at, updated_at, is_deleted)
+- [x] Configure connection pooling (pool_size=5, max_overflow=15 → max 20 total)
+- [x] Set query timeout to 30 seconds (connect_args command_timeout)
+- [x] Alembic already in requirements.txt
+- [x] Initialize Alembic with async env.py (alembic.ini + alembic/env.py + script.py.mako)
+- [x] Create initial migration (alembic/versions/0001_initial_schema.py — baseline, no tables yet)
+- [ ] Test: alembic upgrade head works (run when Docker is up)
+- [ ] Test: alembic downgrade base works (run when Docker is up)
 
 ## Step 0.6 — Celery Setup
 - [ ] Install Celery + Redis

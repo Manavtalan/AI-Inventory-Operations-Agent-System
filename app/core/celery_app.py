@@ -1,25 +1,24 @@
 """
-Celery application — minimal scaffold for Phase 0, Step 0.2 (Docker Environment Setup).
+Celery application configuration.
 
-Full Celery configuration (queues, routing, task settings, retry policies)
-happens in Phase 0, Step 0.6 — Celery Setup.
+Phase 0, Step 0.4: All connection config sourced from app.core.config.settings.
+Full Celery setup (queues, routing, task definitions) happens in Step 0.6.
 """
 
-import os
 from celery import Celery
 
-redis_host = os.getenv("REDIS_HOST", "localhost")
-redis_port = os.getenv("REDIS_PORT", "6379")
-redis_db = os.getenv("REDIS_DB", "0")
+from app.core.config import settings
 
-broker_url = os.getenv("CELERY_BROKER_URL", f"redis://{redis_host}:{redis_port}/{redis_db}")
-result_backend = os.getenv("CELERY_RESULT_BACKEND", f"redis://{redis_host}:{redis_port}/{redis_db}")
+# Use explicit CELERY_BROKER_URL / CELERY_RESULT_BACKEND from env if set,
+# otherwise fall back to the derived redis_url.
+_broker = settings.celery_broker_url or settings.redis_url
+_backend = settings.celery_result_backend or settings.redis_url
 
 celery_app = Celery(
     "inventory_ops",
-    broker=broker_url,
-    backend=result_backend,
-    include=[],  # Task modules added in Step 0.6
+    broker=_broker,
+    backend=_backend,
+    include=[],  # Task modules registered in Step 0.6
 )
 
 celery_app.conf.update(
@@ -28,4 +27,7 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
+    task_time_limit=settings.celery_task_time_limit,
+    task_max_retries=settings.celery_task_max_retries,
+    result_expires=settings.celery_result_expires,
 )

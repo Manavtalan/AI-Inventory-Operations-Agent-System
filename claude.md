@@ -84,8 +84,8 @@ inventory-ops-ai/
 - ✅ FastAPI application factory with structured logging
 - ✅ Request ID middleware and exception handling
 - ✅ Startup validation with postgres/redis connectivity checks
-- 🔨 Settings & secrets management (IN PROGRESS - Step 0.4)
-- ⏳ Database setup with base models (Step 0.5)
+- ✅ Settings & secrets management (app/core/config.py — Pydantic BaseSettings)
+- ✅ Database setup with base models (app/core/database.py, app/models/base.py, Alembic)
 - ⏳ Celery configuration (Step 0.6)
 - ⏳ CI/CD pipeline (Step 0.8)
 
@@ -235,34 +235,31 @@ OPENAI_API_KEY=
 
 ## Current Progress
 
-**Phase 0 Progress: ~60% Complete (Steps 0.1-0.3 done)**
+**Phase 0 Progress: ~85% Complete (Steps 0.1-0.5 done)**
 
 Completed:
 - ✅ Step 0.1: Repository structure, git, documentation
 - ✅ Step 0.2: Docker environment with 6 services (all healthy)
 - ✅ Step 0.3: Core application setup (logging, middleware, exceptions, startup validation)
+- ✅ Step 0.4: Settings & secrets management (app/core/config.py — Pydantic BaseSettings v2)
+- ✅ Step 0.5: Database setup (async engine, TimestampMixin, Alembic async env.py, initial migration)
 
 Current Task:
-- 🔨 Step 0.4: Settings & Secrets Management
+- 🔨 Step 0.6: Celery Setup
 
 Next Steps:
-- Step 0.5: Database setup (SQLAlchemy, Alembic, base models)
-- Step 0.6: Celery configuration (queues, routing, retry policies)
 - Step 0.7: Brand configuration system (YAML)
 - Step 0.8: CI/CD pipeline (GitHub Actions)
 
 ---
 
-## Step 0.4 — Settings & Secrets Management (CURRENT)
+## Step 0.6 — Celery Setup (CURRENT)
 
-Replace raw `os.getenv()` calls with centralized Pydantic `BaseSettings`:
-- Create `app/core/config.py` with Settings class using BaseSettings v2
-- Validate ALL environment variables on import
-- Construct database_url and redis_url as @property methods
-- Export singleton: `settings = Settings()`
-- Update all files using os.getenv() to use settings instance
-- Files to update: app/core/celery_app.py, app/main.py
-- Startup validation uses Settings (missing var = clear error, refused startup)
+- Update `app/core/celery_app.py` with full queue/routing configuration
+- Define 3 queues: `realtime`, `default`, `reports`
+- Set `acks_late=True`, task routing per queue
+- Create `app/workers/` task stubs with structlog logging
+- Test task that executes, logs, and retries on failure
 
 ---
 
